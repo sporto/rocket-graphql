@@ -1,0 +1,10 @@
+[package]
+name = "hello-rocket"
+version = "0.1.0"
+authors = ["Sebastian Porto <s@porto5.com>"]
+
+[dependencies]
+rocket = "0.3.3"
+rocket_codegen = "0.3.3"
+juniper = { git = "https://github.com/graphql-rust/juniper" }
+juniper_rocket = { git = "https://github.com/graphql-rust/juniper_rocket" }
