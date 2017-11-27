@@ -11,7 +11,7 @@ extern crate juniper_rocket;
 extern crate r2d2;
 extern crate r2d2_diesel;
 
-use juniper::Context;
+use juniper::{Context, FieldResult, FieldError, Value};
 use juniper::{EmptyMutation, RootNode};
 use rocket::response::content;
 use rocket::response::NamedFile;
@@ -26,7 +26,7 @@ mod db;
 mod models;
 
 pub struct GraphQLContext {
-    pub connection: db::Conn,
+    pub dbPool: db::Pool,
 }
 
 impl Context for GraphQLContext {}
@@ -34,7 +34,6 @@ impl Context for GraphQLContext {}
 type Schema = RootNode<'static, GraphQLContext, EmptyMutation<GraphQLContext>>;
 
 graphql_object!(User: () | &self | {
-    // Expose a simple field as a GraphQL string.
     field id() -> &i32 {
         &self.id
     }
@@ -47,8 +46,13 @@ graphql_object!(User: () | &self | {
 graphql_object!(GraphQLContext: GraphQLContext as "Query" |&self| {
     description: "The root query object of the schema"
 
-    field users(&executor) -> Vec<User> {
-        User::all(&executor.context().connection)
+    field users(&executor) -> FieldResult<Vec<User>> {
+        match executor.context().dbPool.get() {
+            Ok(conn) =>
+                Ok(User::all(&conn)),
+            Err(_) =>
+                Err(FieldError::new("DB not available", Value::null())),
+        }
     }
 });
 
@@ -79,7 +83,6 @@ fn get_graphql_handler(context: State<GraphQLContext>,
 
 #[post("/graphql", data = "<request>")]
 fn post_graphql_handler(context: State<GraphQLContext>,
-                        conn: db::Conn,
                         request: juniper_rocket::GraphQLRequest,
                         schema: State<Schema>)
                         -> juniper_rocket::GraphQLResponse {
@@ -87,7 +90,7 @@ fn post_graphql_handler(context: State<GraphQLContext>,
 }
 
 fn main() {
-    let pool = db::init_pool();
+    let dbPool = db::init_pool();
 
     // let schema = Schema::new(
     //     GraphQLContext { },
@@ -96,9 +99,13 @@ fn main() {
 
     let routes = routes![index, users, graphiql, get_graphql_handler, post_graphql_handler];
 
+    let context = GraphQLContext {
+        dbPool: dbPool,
+    };
+
     rocket::ignite()
-        .manage(pool)
-        // .manage(new_graphql_context())
+        // .manage(dbPool)
+        .manage(context)
         // .manage(schema)
         .mount("/", routes)
         .launch();
