@@ -3,7 +3,12 @@
 - https://rocket.rs
 - https://github.com/graphql-rust/juniper_rocket
 
-Run:
+## Setup
+
+- Install direnv https://direnv.net/
+- Copy .envrc.example -> .envrc
+
+## Run
 
 `cargo run`
 
