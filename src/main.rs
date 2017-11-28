@@ -61,12 +61,12 @@ fn index() -> &'static str {
     "Hello, world!"
 }
 
-#[get("/users")]
-fn users(conn: db::Conn) -> Json<Vec<User>> {
-    let users = User::all(&conn);
+// #[get("/users")]
+// fn users(conn: db::Conn) -> Json<Vec<User>> {
+//     let users = User::all(&conn);
 
-    Json(users)
-}
+//     Json(users)
+// }
 
 #[get("/graphiql")]
 fn graphiql() -> content::Html<String> {
@@ -90,23 +90,23 @@ fn post_graphql_handler(context: State<GraphQLContext>,
 }
 
 fn main() {
+    let routes = routes![index, graphiql, get_graphql_handler, post_graphql_handler];
+
     let dbPool = db::init_pool();
-
-    // let schema = Schema::new(
-    //     GraphQLContext { },
-    //     EmptyMutation::<GraphQLContext>::new()
-    // );
-
-    let routes = routes![index, users, graphiql, get_graphql_handler, post_graphql_handler];
 
     let context = GraphQLContext {
         dbPool: dbPool,
     };
 
+    // let schema = Schema::new(
+    //     context,
+    //     EmptyMutation::<GraphQLContext>::new()
+    // );
+
     rocket::ignite()
         // .manage(dbPool)
         .manage(context)
-        // .manage(schema)
+        .manage(schema)
         .mount("/", routes)
         .launch();
 }
